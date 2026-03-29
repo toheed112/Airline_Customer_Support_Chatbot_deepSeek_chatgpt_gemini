@@ -1,0 +1,515 @@
+{
+  "airlines": [
+    {
+      "iata": "LX",
+      "name": "Swiss International Air Lines"
+    },
+    {
+      "iata": "AA",
+      "name": "American Airlines"
+    },
+    {
+      "iata": "BA",
+      "name": "British Airways"
+    },
+    {
+      "iata": "AF",
+      "name": "Air France"
+    },
+    {
+      "iata": "LH",
+      "name": "Lufthansa"
+    },
+    {
+      "iata": "UA",
+      "name": "United Airlines"
+    }
+  ],
+  "airports": [
+    {
+      "iata": "ZRH",
+      "city": "Zurich",
+      "country": "Switzerland",
+      "name": "Zurich Airport"
+    },
+    {
+      "iata": "GVA",
+      "city": "Geneva",
+      "country": "Switzerland",
+      "name": "Geneva Airport"
+    },
+    {
+      "iata": "BSL",
+      "city": "Basel",
+      "country": "Switzerland",
+      "name": "EuroAirport Basel"
+    },
+    {
+      "iata": "LHR",
+      "city": "London",
+      "country": "UK",
+      "name": "Heathrow Airport"
+    },
+    {
+      "iata": "LGW",
+      "city": "London",
+      "country": "UK",
+      "name": "Gatwick Airport"
+    },
+    {
+      "iata": "CDG",
+      "city": "Paris",
+      "country": "France",
+      "name": "Charles de Gaulle"
+    },
+    {
+      "iata": "FRA",
+      "city": "Frankfurt",
+      "country": "Germany",
+      "name": "Frankfurt Airport"
+    },
+    {
+      "iata": "MUC",
+      "city": "Munich",
+      "country": "Germany",
+      "name": "Munich Airport"
+    },
+    {
+      "iata": "FCO",
+      "city": "Rome",
+      "country": "Italy",
+      "name": "Fiumicino Airport"
+    },
+    {
+      "iata": "AMS",
+      "city": "Amsterdam",
+      "country": "Netherlands",
+      "name": "Schiphol Airport"
+    },
+    {
+      "iata": "MAD",
+      "city": "Madrid",
+      "country": "Spain",
+      "name": "Adolfo Suárez Madrid–Barajas"
+    },
+    {
+      "iata": "BCN",
+      "city": "Barcelona",
+      "country": "Spain",
+      "name": "Barcelona–El Prat"
+    },
+    {
+      "iata": "JFK",
+      "city": "New York",
+      "country": "USA",
+      "name": "John F. Kennedy International"
+    },
+    {
+      "iata": "EWR",
+      "city": "Newark",
+      "country": "USA",
+      "name": "Newark Liberty International"
+    },
+    {
+      "iata": "LGA",
+      "city": "New York",
+      "country": "USA",
+      "name": "LaGuardia Airport"
+    },
+    {
+      "iata": "ORD",
+      "city": "Chicago",
+      "country": "USA",
+      "name": "O'Hare International"
+    },
+    {
+      "iata": "LAX",
+      "city": "Los Angeles",
+      "country": "USA",
+      "name": "Los Angeles International"
+    },
+    {
+      "iata": "SFO",
+      "city": "San Francisco",
+      "country": "USA",
+      "name": "San Francisco International"
+    },
+    {
+      "iata": "MIA",
+      "city": "Miami",
+      "country": "USA",
+      "name": "Miami International"
+    },
+    {
+      "iata": "YYZ",
+      "city": "Toronto",
+      "country": "Canada",
+      "name": "Toronto Pearson International"
+    },
+    {
+      "iata": "HKG",
+      "city": "Hong Kong",
+      "country": "Hong Kong",
+      "name": "Hong Kong International"
+    },
+    {
+      "iata": "SIN",
+      "city": "Singapore",
+      "country": "Singapore",
+      "name": "Singapore Changi"
+    },
+    {
+      "iata": "NRT",
+      "city": "Tokyo",
+      "country": "Japan",
+      "name": "Narita International"
+    },
+    {
+      "iata": "DXB",
+      "city": "Dubai",
+      "country": "UAE",
+      "name": "Dubai International"
+    }
+  ],
+  "routes": [
+    {
+      "id": 1,
+      "src": "ZRH",
+      "dst": "JFK",
+      "airline": "LX",
+      "equipment": "A330",
+      "price": 850.0,
+      "stops": 0
+    },
+    {
+      "id": 2,
+      "src": "JFK",
+      "dst": "ZRH",
+      "airline": "LX",
+      "equipment": "A330",
+      "price": 900.0,
+      "stops": 0
+    },
+    {
+      "id": 3,
+      "src": "ZRH",
+      "dst": "LHR",
+      "airline": "LX",
+      "equipment": "A320",
+      "price": 280.0,
+      "stops": 0
+    },
+    {
+      "id": 4,
+      "src": "LHR",
+      "dst": "ZRH",
+      "airline": "LX",
+      "equipment": "A320",
+      "price": 330.0,
+      "stops": 0
+    },
+    {
+      "id": 5,
+      "src": "ZRH",
+      "dst": "CDG",
+      "airline": "LX",
+      "equipment": "A320",
+      "price": 250.0,
+      "stops": 0
+    },
+    {
+      "id": 6,
+      "src": "CDG",
+      "dst": "ZRH",
+      "airline": "LX",
+      "equipment": "A320",
+      "price": 300.0,
+      "stops": 0
+    },
+    {
+      "id": 7,
+      "src": "ZRH",
+      "dst": "FRA",
+      "airline": "LX",
+      "equipment": "A220",
+      "price": 180.0,
+      "stops": 0
+    },
+    {
+      "id": 8,
+      "src": "FRA",
+      "dst": "ZRH",
+      "airline": "LX",
+      "equipment": "A220",
+      "price": 230.0,
+      "stops": 0
+    },
+    {
+      "id": 9,
+      "src": "ZRH",
+      "dst": "AMS",
+      "airline": "LX",
+      "equipment": "A320",
+      "price": 220.0,
+      "stops": 0
+    },
+    {
+      "id": 10,
+      "src": "AMS",
+      "dst": "ZRH",
+      "airline": "LX",
+      "equipment": "A320",
+      "price": 270.0,
+      "stops": 0
+    },
+    {
+      "id": 11,
+      "src": "ZRH",
+      "dst": "FCO",
+      "airline": "LX",
+      "equipment": "A321",
+      "price": 320.0,
+      "stops": 0
+    },
+    {
+      "id": 12,
+      "src": "FCO",
+      "dst": "ZRH",
+      "airline": "LX",
+      "equipment": "A321",
+      "price": 370.0,
+      "stops": 0
+    },
+    {
+      "id": 13,
+      "src": "ZRH",
+      "dst": "BCN",
+      "airline": "LX",
+      "equipment": "A320",
+      "price": 300.0,
+      "stops": 0
+    },
+    {
+      "id": 14,
+      "src": "BCN",
+      "dst": "ZRH",
+      "airline": "LX",
+      "equipment": "A320",
+      "price": 350.0,
+      "stops": 0
+    },
+    {
+      "id": 15,
+      "src": "ZRH",
+      "dst": "LAX",
+      "airline": "LX",
+      "equipment": "A340",
+      "price": 950.0,
+      "stops": 0
+    },
+    {
+      "id": 16,
+      "src": "LAX",
+      "dst": "ZRH",
+      "airline": "LX",
+      "equipment": "A340",
+      "price": 1000.0,
+      "stops": 0
+    },
+    {
+      "id": 17,
+      "src": "ZRH",
+      "dst": "SFO",
+      "airline": "LX",
+      "equipment": "A340",
+      "price": 980.0,
+      "stops": 0
+    },
+    {
+      "id": 18,
+      "src": "SFO",
+      "dst": "ZRH",
+      "airline": "LX",
+      "equipment": "A340",
+      "price": 1030.0,
+      "stops": 0
+    },
+    {
+      "id": 19,
+      "src": "ZRH",
+      "dst": "ORD",
+      "airline": "LX",
+      "equipment": "A330",
+      "price": 880.0,
+      "stops": 0
+    },
+    {
+      "id": 20,
+      "src": "ORD",
+      "dst": "ZRH",
+      "airline": "LX",
+      "equipment": "A330",
+      "price": 930.0,
+      "stops": 0
+    },
+    {
+      "id": 21,
+      "src": "ZRH",
+      "dst": "SIN",
+      "airline": "LX",
+      "equipment": "A340",
+      "price": 1200.0,
+      "stops": 0
+    },
+    {
+      "id": 22,
+      "src": "SIN",
+      "dst": "ZRH",
+      "airline": "LX",
+      "equipment": "A340",
+      "price": 1250.0,
+      "stops": 0
+    },
+    {
+      "id": 23,
+      "src": "ZRH",
+      "dst": "HKG",
+      "airline": "LX",
+      "equipment": "A340",
+      "price": 1150.0,
+      "stops": 0
+    },
+    {
+      "id": 24,
+      "src": "HKG",
+      "dst": "ZRH",
+      "airline": "LX",
+      "equipment": "A340",
+      "price": 1200.0,
+      "stops": 0
+    },
+    {
+      "id": 25,
+      "src": "GVA",
+      "dst": "LHR",
+      "airline": "LX",
+      "equipment": "A320",
+      "price": 290.0,
+      "stops": 0
+    },
+    {
+      "id": 26,
+      "src": "LHR",
+      "dst": "GVA",
+      "airline": "LX",
+      "equipment": "A320",
+      "price": 340.0,
+      "stops": 0
+    },
+    {
+      "id": 27,
+      "src": "GVA",
+      "dst": "CDG",
+      "airline": "LX",
+      "equipment": "A220",
+      "price": 200.0,
+      "stops": 0
+    },
+    {
+      "id": 28,
+      "src": "CDG",
+      "dst": "GVA",
+      "airline": "LX",
+      "equipment": "A220",
+      "price": 250.0,
+      "stops": 0
+    },
+    {
+      "id": 29,
+      "src": "GVA",
+      "dst": "JFK",
+      "airline": "LX",
+      "equipment": "A330",
+      "price": 900.0,
+      "stops": 0
+    },
+    {
+      "id": 30,
+      "src": "JFK",
+      "dst": "GVA",
+      "airline": "LX",
+      "equipment": "A330",
+      "price": 950.0,
+      "stops": 0
+    }
+  ],
+  "users": [
+    {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "passenger_id": "000543216"
+    },
+    {
+      "id": 2,
+      "name": "Jane Smith",
+      "email": "jane.smith@example.com",
+      "passenger_id": "000543217"
+    },
+    {
+      "id": 3,
+      "name": "Test User",
+      "email": "test@example.com",
+      "passenger_id": "TEST001"
+    },
+    {
+      "name": "Passenger 42",
+      "passenger_id": "42",
+      "email": "42@demo.com",
+      "registered": "chat",
+      "created_at": "2026-03-29T08:19:42.837612"
+    }
+  ],
+  "bookings": [
+    {
+      "id": 1,
+      "ticket_no": "TKT-LX001-1234",
+      "user_id": "000543216",
+      "route_id": 1,
+      "src": "ZRH",
+      "dst": "JFK",
+      "airline": "LX",
+      "status": "CONFIRMED",
+      "booking_date": "2026-03-29T05:45:13.303997",
+      "price_paid": 850.0,
+      "seat_number": "12A"
+    },
+    {
+      "id": 2,
+      "ticket_no": "TKT-LX002-5678",
+      "user_id": "000543217",
+      "route_id": 3,
+      "src": "ZRH",
+      "dst": "CDG",
+      "airline": "LX",
+      "status": "CONFIRMED",
+      "booking_date": "2026-03-29T05:45:13.303997",
+      "price_paid": 250.0,
+      "seat_number": "15C"
+    },
+    {
+      "ticket_no": "TKT-LX5-7835",
+      "user_id": "42",
+      "flight_id": 5,
+      "status": "CONFIRMED",
+      "price_paid": 250.0,
+      "booking_date": "2026-03-29T13:35:30.589967",
+      "seat_number": "13E",
+      "created_at": "2026-03-29T13:35:30.589967",
+      "id": 3
+    }
+  ],
+  "hotel_bookings": [],
+  "car_bookings": [],
+  "excursion_bookings": []
+}
