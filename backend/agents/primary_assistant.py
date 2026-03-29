@@ -1,5 +1,3 @@
-# backend/agents/primary_assistant.py
-
 from __future__ import annotations
 
 import json
@@ -7,142 +5,43 @@ import os
 import logging
 from datetime import datetime
 from typing import Any, Dict, List
-from pathlib import Path
 
 from dotenv import load_dotenv
-from openai import OpenAI
 import ollama
 
-from backend.agents.gemini_refiner import refine_with_gemini
+from backend.agents.intent_classifier import classify_intent
+from backend.tools.location_parser import LocationParser
 from backend.tools import (
     lookup_policy,
     search_flights,
-    update_ticket_to_new_flight,
-    search_cars,
-    book_car,
     search_hotels,
-    book_hotel,
+    search_cars,
     search_excursions,
-    book_excursion,
     search_web,
     fetch_user_info,
+    book_flight,
 )
 
 load_dotenv()
 
-# Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ----------------------------
-# Clients & models
-# ----------------------------
-
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-OPENAI_ROUTER_MODEL = os.getenv("OPENAI_ROUTER_MODEL", "gpt-4o-mini")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "deepseek-r1:1.5b")
-USE_GEMINI_REFINEMENT = os.getenv("USE_GEMINI_REFINEMENT", "false").lower() == "true"
 
-# Validate environment
-def validate_environment():
-    """Validate required environment variables."""
-    required = {
-        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
-        "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY"),
-    }
-    missing = [k for k, v in required.items() if not v]
-    if missing:
-        logger.warning(f"Missing optional env vars: {missing}")
-    
-    # Check if Ollama is running
-    try:
-        ollama.list()
-        logger.info("✓ Ollama connection verified")
-    except Exception as e:
-        logger.error(f"✗ Ollama not running: {e}")
-        raise RuntimeError("Ollama service not available. Run 'ollama serve' first.")
+# Initialize location parser
+location_parser = LocationParser()
 
-validate_environment()
-
-# ----------------------------
-# Tool execution
-# ----------------------------
-
-def _execute_tool(name: str, args: Dict[str, Any], passenger_id: str | None) -> Any:
-    """Execute a tool by name with given arguments."""
-    booking_tools = {
-        "book_hotel",
-        "book_car",
-        "book_excursion",
-        "update_ticket_to_new_flight",
-    }
-
-    # Auto-inject passenger_id for booking tools
-    if name in booking_tools and not args.get("passenger_id") and passenger_id:
-        args["passenger_id"] = passenger_id
-
-    tools = {
-        "search_flights": search_flights,
-        "search_hotels": search_hotels,
-        "search_cars": search_cars,
-        "search_excursions": search_excursions,
-        "book_hotel": book_hotel,
-        "book_car": book_car,
-        "book_excursion": book_excursion,
-        "update_ticket_to_new_flight": update_ticket_to_new_flight,
-        "lookup_policy": lookup_policy,
-        "search_web": search_web,
-        "fetch_user_info": fetch_user_info,
-    }
-
-    if name not in tools:
-        logger.error(f"Unknown tool requested: {name}")
-        return f"Unknown tool: {name}"
-
-    try:
-        result = tools[name](**args)
-        logger.info(f"Tool {name} executed successfully")
-        return result
-    except Exception as e:
-        logger.error(f"Tool {name} failed: {e}")
-        return f"Tool execution failed: {str(e)}"
-
-
-def _extract_search_params(query: str) -> Dict[str, Any]:
-    """Extract search parameters from user query using simple keyword detection."""
-    query_lower = query.lower()
-    params = {}
-    
-    # Extract locations (common airport codes and cities)
-    airports = ["zur", "jfk", "lhr", "cdg", "fra", "zrh", "nyc", "lon", "par"]
-    cities = ["zurich", "new york", "london", "paris", "frankfurt"]
-    
-    for airport in airports:
-        if airport in query_lower:
-            params["location"] = airport.upper()
-            break
-    
-    for city in cities:
-        if city in query_lower:
-            params["location"] = city.title()
-            break
-    
-    if not params.get("location"):
-        params["location"] = "Zurich"  # Default
-    
-    return params
-
-
-# ----------------------------
-# Main agent
-# ----------------------------
 
 def agent(state: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Primary assistant agent.
-    - Intelligently routes queries to appropriate tools
-    - Uses Ollama DeepSeek for response generation
-    - Optionally refines with Gemini
+    Improved primary assistant (LLM-first + location-aware).
+
+    - OpenAI decides intent (NO keyword routing)
+    - LocationParser resolves cities / IATA codes
+    - Guest users can explore
+    - Passenger ID required for bookings (future)
+    - DeepSeek generates final response
     """
     messages: List[Dict[str, Any]] = state.get("messages", [])
     passenger_id: str | None = state.get("passenger_id")
@@ -151,152 +50,233 @@ def agent(state: Dict[str, Any]) -> Dict[str, Any]:
     if not messages:
         raise ValueError("State contains no messages")
 
-    # Get conversation history and latest query
     *history, last_msg = messages
-    user_query = last_msg.get("content", "")
-    
-    logger.info(f"Processing query: {user_query[:100]}...")
+    user_query = last_msg.get("content", "").strip()
 
-    # ----------------------------
-    # Intelligent tool routing
-    # ----------------------------
+    logger.info(f"Processing query: {user_query[:100]}")
+
+    # ==================== EXTRACT PASSENGER ID FROM CHAT ====================
+    import re
+    id_just_provided = False
+
+    # Match: 'id 42', 'my id is TEST', 'passenger id: 42'
+    id_match = re.search(
+        r'(?:passenger[\s_]*id|my[\s_]*id|id[\s_]*is|id)[\s:=#]*([A-Za-z0-9]+)',
+        user_query, re.IGNORECASE
+    )
+    # Also match bare value like '42' or 'TEST001' on its own
+    if not id_match:
+        bare = re.fullmatch(r'\s*([A-Za-z0-9]{1,20})\s*', user_query)
+        if bare and not re.fullmatch(
+            r'(?:yes|no|ok|okay|sure|book|hi|hello|help|thanks|bye)',
+            bare.group(1), re.IGNORECASE
+        ):
+            id_match = bare
+
+    if id_match:
+        extracted_id = id_match.group(1).strip()
+        logger.info(f"Extracted passenger ID from message: {extracted_id}")
+        passenger_id = extracted_id
+        state["passenger_id"] = extracted_id
+        id_just_provided = True
+
+        from backend.database.json_handler import db as _db
+        existing = _db.find_one('users', {'passenger_id': extracted_id})
+        if not existing and extracted_id.isdigit():
+            existing = _db.find_one('users', {'id': int(extracted_id)})
+        if not existing:
+            _db.insert('users', {
+                'name': f'Passenger {extracted_id}',
+                'passenger_id': extracted_id,
+                'email': f'{extracted_id}@demo.com',
+                'registered': 'chat'
+            })
+            logger.info(f"Auto-registered new passenger: {extracted_id}")
+
+    # ==================== AUTO-BOOK IF ID JUST PROVIDED ====================
+    # If user just gave their ID and we have a pending flight, book it now
+    if id_just_provided and state.get('last_flight_id'):
+        from backend.tools.flights import book_flight as _book_flight
+        booking = _book_flight(int(state['last_flight_id']), passenger_id)
+        if isinstance(booking, dict) and booking.get('success'):
+            state['last_booking'] = booking
+            confirmation = (
+                f"Booking confirmed! Here are your details:\n\n"
+                f"Ticket: {booking['ticket_no']}\n"
+                f"Route: {booking['route']}\n"
+                f"Seat: {booking['seat']}\n"
+                f"Price: ${booking['price']:.2f}\n"
+                f"Passenger ID: {passenger_id}\n\n"
+                f"Your booking has been saved. Safe travels!"
+            )
+            messages.append({'role': 'assistant', 'content': confirmation})
+            state['messages'] = messages
+            return state
+
+    # ==================== INTENT CLASSIFICATION (LLM-FIRST) ====================
+    intent_data = classify_intent(user_query)
+
+    intent = intent_data.get("intent", "unknown")
+    params = intent_data.get("parameters", {})
+    is_booking = intent_data.get("booking", False)
+
+    logger.info(f"Detected intent: {intent}, booking={is_booking}")
+
+    # ==================== LOCATION PARSING ====================
+    locations = location_parser.parse_location(user_query)
+    departure_iata = locations.get("departure")
+    arrival_iata = locations.get("arrival")
+
+    location_context = ""
+    if departure_iata:
+        location_context += f"Departure: {location_parser.format_location(departure_iata)}\n"
+    if arrival_iata:
+        location_context += f"Arrival: {location_parser.format_location(arrival_iata)}\n"
+
+    # ==================== TOOL EXECUTION ====================
     tool_results: Dict[str, Any] = {}
-    query_lower = user_query.lower()
 
-    try:
-        # Extract parameters from query
-        params = _extract_search_params(user_query)
-        
-        # Route to appropriate tools based on keywords
-        if any(word in query_lower for word in ["flight", "fly", "departure", "arrival"]):
-            logger.info("Routing to flight search")
-            tool_results["flights"] = search_flights(
-                departure_airport=params.get("location"),
-                limit=5
-            )
-        
-        elif any(word in query_lower for word in ["hotel", "stay", "accommodation", "room"]):
-            logger.info("Routing to hotel search")
-            tool_results["hotels"] = search_hotels(
-                location=params.get("location", "Zurich")
-            )
-        
-        elif any(word in query_lower for word in ["car", "rental", "vehicle", "drive"]):
-            logger.info("Routing to car rental search")
-            tool_results["cars"] = search_cars(
-                location=params.get("location", "Zurich"),
-                dates=None
-            )
-        
-        elif any(word in query_lower for word in ["policy", "rule", "cancellation", "refund", "baggage"]):
-            logger.info("Routing to policy lookup")
-            tool_results["policy"] = lookup_policy(user_query)
-        
-        elif any(word in query_lower for word in ["excursion", "tour", "activity", "sightseeing"]):
-            logger.info("Routing to excursion search")
-            tool_results["excursions"] = search_excursions(
-                location=params.get("location", "Zurich")
-            )
-        
-        elif any(word in query_lower for word in ["delay", "status", "live", "current", "real-time"]):
-            logger.info("Routing to web search for live info")
-            tool_results["web_search"] = search_web(user_query)
-        
-        # Always fetch user info if passenger_id available
-        if passenger_id:
-            tool_results["user_info"] = fetch_user_info(passenger_id)
+    # If user is trying to book but still has no ID, ask for it (don't hard-block)
+    if is_booking and not passenger_id:
+        tool_results["info"] = (
+            "To complete your booking I just need your Passenger ID. "
+            "You can use any ID — for example type: id 12345\n\n"
+            "You can also use a demo ID: 1, 2, or 3 (existing users) "
+            "or any new ID you'd like and I'll register you automatically."
+        )
+    else:
+        try:
+            if intent == "flight_search":
+                search_args = {}
+                if departure_iata:
+                    search_args["departure_airport"] = departure_iata
+                if arrival_iata:
+                    search_args["arrival_airport"] = arrival_iata
+                if params.get("date"):
+                    search_args["departure_date"] = params["date"]
 
-    except Exception as e:
-        logger.error(f"Tool execution error: {e}")
-        tool_results["error"] = f"Tool error: {str(e)}"
+                tool_results["flights"] = search_flights(**search_args)
+                # Remember first flight ID so user can say "book it" next
+                flights = tool_results["flights"]
+                if isinstance(flights, list) and flights:
+                    state["last_flight_id"] = flights[0].get("id")
 
-    # ----------------------------
-    # Build context-aware prompt
-    # ----------------------------
-    
-    # Limit history to last 6 messages for token efficiency
+            elif intent == "hotel_search":
+                search_location = arrival_iata or departure_iata or params.get("location")
+                if search_location:
+                    tool_results["hotels"] = search_hotels(location=search_location)
+                else:
+                    tool_results["hotels"] = "Please specify a city or airport for hotel search."
+
+            elif intent == "car_search":
+                search_location = arrival_iata or departure_iata or params.get("location")
+                if search_location:
+                    tool_results["cars"] = search_cars(location=search_location)
+                else:
+                    tool_results["cars"] = "Please specify a location for car rental."
+
+            elif intent == "excursion_search":
+                search_location = arrival_iata or departure_iata or params.get("location")
+                if search_location:
+                    tool_results["excursions"] = search_excursions(location=search_location)
+                else:
+                    tool_results["excursions"] = "Please specify a destination."
+
+            elif intent == "policy_query":
+                tool_results["policy"] = lookup_policy(user_query)
+
+            elif intent == "booking_action":
+                # Attempt actual booking — passenger_id is guaranteed here
+                flight_id = params.get("flight_id") or state.get("last_flight_id")
+                if flight_id:
+                    booking = book_flight(int(flight_id), passenger_id)
+                    tool_results["booking"] = booking
+                    if isinstance(booking, dict) and booking.get("success"):
+                        state["last_booking"] = booking
+                else:
+                    # No flight ID in context — search first then ask
+                    search_args = {}
+                    if departure_iata:
+                        search_args["departure_airport"] = departure_iata
+                    if arrival_iata:
+                        search_args["arrival_airport"] = arrival_iata
+                    flights = search_flights(**search_args) if search_args else []
+                    tool_results["flights"] = flights
+                    tool_results["booking_prompt"] = (
+                        "Please confirm which flight you'd like to book "
+                        "by specifying the flight ID."
+                    )
+
+            elif intent == "unknown":
+                tool_results["fallback"] = {
+                    "message": (
+                        "I can help you explore flights, hotels, car rentals, "
+                        "excursions, and airline policies."
+                    ),
+                    "examples": [
+                        "Flights from Zurich to New York",
+                        "Hotels in Paris",
+                        "Rent a car at JFK",
+                        "Things to do in Zurich",
+                        "What is the baggage allowance?"
+                    ]
+                }
+
+            # Always attach user info if available
+            if passenger_id:
+                tool_results["user_info"] = fetch_user_info(passenger_id)
+
+        except Exception as e:
+            logger.error(f"Tool execution error: {e}")
+            tool_results["error"] = f"Error retrieving information: {str(e)}"
+
+    # ==================== PROMPT FOR DEEPSEEK ====================
     recent_history = history[-6:] if len(history) > 6 else history
-    
-    prompt = f"""You are a helpful Swiss Airlines virtual assistant.
+
+    prompt = f"""You are a Swiss Airlines virtual assistant.
 
 Current UTC time: {datetime.utcnow().isoformat()}Z
 
-Recent conversation history:
-{json.dumps(recent_history, indent=2)}
+Parsed locations:
+{location_context or "No specific locations detected"}
 
-User's current question:
+Recent conversation:
+{json.dumps(recent_history[-3:], indent=2) if recent_history else "No previous messages"}
+
+User question:
 {user_query}
 
-Available tool results (trusted data from systems):
+Trusted system data:
 {json.dumps(tool_results, indent=2, default=str)}
 
-User information:
-{user_info or "No user info available"}
-
 INSTRUCTIONS:
-- Base your answer ONLY on the tool results provided above
-- Do NOT invent flights, prices, hotels, or policies
-- If tool results are empty or show "No results found", inform the user politely
-- Be concise, helpful, and professional
-- Use natural conversational language
-- If the user asks about bookings, remind them you can help with that
-- Format prices in CHF (Swiss Francs) when mentioned
+- Use ONLY the data provided above
+- Do NOT invent flights, prices, or availability
+- Clearly explain if booking is blocked (guest mode)
+- Be professional, friendly, and concise
+- Show city names with IATA codes when relevant
 
-Provide a helpful, accurate response:"""
+Provide a helpful response:"""
 
-    # ----------------------------
-    # Generate response with Ollama DeepSeek
-    # ----------------------------
-    answer = ""
+    # ==================== RESPONSE GENERATION ====================
     try:
-        logger.info("Generating response with Ollama DeepSeek")
         response = ollama.chat(
             model=OLLAMA_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            options={
-                "temperature": 0.7,
-                "num_predict": 500,
-            }
+            options={"temperature": 0.7, "num_predict": 500}
         )
         answer = response["message"]["content"].strip()
-        logger.info("✓ Ollama response generated")
 
-    except Exception as ollama_error:
-        logger.error(f"Ollama error: {ollama_error}")
-        
-        # Fallback: Try Gemini
-        try:
-            logger.info("Falling back to Gemini")
-            answer = refine_with_gemini(prompt)
-            logger.info("✓ Gemini fallback successful")
-        except Exception as gemini_error:
-            logger.error(f"Gemini fallback failed: {gemini_error}")
-            answer = "I apologize, but I'm having trouble generating a response right now. Please try again in a moment."
+    except Exception as e:
+        logger.error(f"Ollama error: {e}")
+        answer = (
+            "I’m having trouble generating a response right now, "
+            "but I’ve gathered the available information above."
+        )
 
-    # ----------------------------
-    # Optional Gemini refinement
-    # ----------------------------
-    if USE_GEMINI_REFINEMENT and answer and "apologize" not in answer.lower():
-        try:
-            logger.info("Refining response with Gemini")
-            refined = refine_with_gemini(
-                f"Improve clarity and professionalism without adding facts:\n\n{answer}"
-            )
-            if refined and not refined.startswith("(Gemini"):
-                answer = refined
-                logger.info("✓ Gemini refinement applied")
-        except Exception as e:
-            logger.warning(f"Gemini refinement skipped: {e}")
-
-    # ----------------------------
-    # Update state
-    # ----------------------------
-    messages.append({
-        "role": "assistant",
-        "content": answer
-    })
-    
+    # ==================== UPDATE STATE ====================
+    messages.append({"role": "assistant", "content": answer})
     state["messages"] = messages
+
     logger.info("Agent processing complete")
-    
     return state
