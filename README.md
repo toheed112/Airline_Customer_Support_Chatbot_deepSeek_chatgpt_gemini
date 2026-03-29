@@ -4,6 +4,12 @@
 
 ---
 
+## 🎥 Demo Video
+
+[![Watch Demo](https://img.shields.io/badge/Watch-Demo%20Video-red?style=for-the-badge&logo=google-drive)](https://drive.google.com/file/d/1TBRqzZWn5piL2OqcFF7S7xpE3z3HJmNY/view?usp=sharing)
+
+---
+
 ## What This Is
 
 A multi-agent AI system that autonomously handles the full airline customer service workflow — flight search, hotel booking, car rentals, excursions, and policy queries — without human involvement at each step. The system detects user intent, routes to the correct specialist agent, executes real bookings, and maintains an auditable trail of every action in the database.
