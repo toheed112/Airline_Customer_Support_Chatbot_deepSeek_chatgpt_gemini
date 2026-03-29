@@ -1,84 +1,76 @@
-# backend/tools/hotels.py - Hotel tools with SQLite
-import sqlite3
+# backend/tools/hotels.py - Updated for JSON
 import logging
-from pathlib import Path
-from dotenv import load_dotenv
-
-load_dotenv()
+from typing import List, Dict, Any
+from backend.database.json_handler import db
+from backend.tools.booking_simulator import booking_sim
 
 logger = logging.getLogger(__name__)
 
-# Use absolute path
-DB_PATH = Path(__file__).parent.parent.parent / "data" / "travel2.sqlite"
 
-
-def search_hotels(location, checkin=None, checkout=None, limit=20):
-    """
-    Search hotels in a specific location.
-    
-    Args:
-        location: City or location name
-        checkin: Check-in date (optional, for future enhancement)
-        checkout: Check-out date (optional, for future enhancement)
-        limit: Maximum number of results
-    
-    Returns:
-        List of hotel dictionaries or error message
-    """
+def search_hotels(location: str, checkin=None, checkout=None, limit=20) -> List[Dict[str, Any]] | str:
+    """Search hotels (simulated - returns mock data)."""
     try:
-        conn = sqlite3.connect(str(DB_PATH))
-        cursor = conn.cursor()
+        from backend.tools.location_parser import LocationParser
+        parser = LocationParser()
         
-        query = "SELECT * FROM hotels WHERE 1=1"
-        params = []
+        # Resolve location to IATA code
+        iata = parser.resolve_iata(location)
+        if not iata:
+            return f"❌ Unknown location: '{location}'. Try using city names or IATA codes."
         
-        if location:
-            query += " AND location LIKE ?"
-            params.append(f"%{location}%")
+        location_info = parser.get_location_info(iata)
+        city = location_info['city'] if location_info else location
         
-        query += " LIMIT ?"
-        params.append(limit)
+        # Mock hotel data
+        mock_hotels = [
+            {
+                'id': 1,
+                'name': f'Grand Hotel {city}',
+                'location': iata,
+                'city': city,
+                'star_rating': 5,
+                'price_per_night': 250.0,
+                'rooms_available': 8,
+                'amenities': ['WiFi', 'Spa', 'Restaurant', 'Pool', 'Gym']
+            },
+            {
+                'id': 2,
+                'name': f'City Inn {city}',
+                'location': iata,
+                'city': city,
+                'star_rating': 3,
+                'price_per_night': 120.0,
+                'rooms_available': 15,
+                'amenities': ['WiFi', 'Breakfast', 'Parking']
+            },
+            {
+                'id': 3,
+                'name': f'Budget Stay {city}',
+                'location': iata,
+                'city': city,
+                'star_rating': 2,
+                'price_per_night': 75.0,
+                'rooms_available': 20,
+                'amenities': ['WiFi', 'Breakfast']
+            }
+        ]
         
-        cursor.execute(query, params)
-        rows = cursor.fetchall()
-        columns = [col[0] for col in cursor.description]
-        results = [dict(zip(columns, row)) for row in rows]
-        conn.close()
+        logger.info(f"Found {len(mock_hotels)} hotels in {city}")
+        return mock_hotels[:limit]
         
-        if not results:
-            logger.info(f"No hotels found in: {location}")
-            return f"No hotels found in {location}. Try a different location."
-        
-        logger.info(f"Found {len(results)} hotels in {location}")
-        return results
-        
-    except sqlite3.Error as e:
-        logger.error(f"Database error in search_hotels: {e}")
-        return f"Database error: {str(e)}"
     except Exception as e:
-        logger.error(f"Error in search_hotels: {e}")
-        return f"Error searching hotels: {str(e)}"
+        logger.error(f"Error searching hotels: {e}")
+        return f"Error: {str(e)}"
 
 
-def book_hotel(hotel_id, passenger_id):
-    """
-    Book a hotel for a passenger.
-    
-    Args:
-        hotel_id: Hotel ID to book
-        passenger_id: Passenger ID for authorization
-    
-    Returns:
-        Success message or raises ValueError
-    """
+def book_hotel(hotel_id: int, passenger_id: str, checkin=None, checkout=None) -> str:
+    """Book a hotel using booking simulator."""
     if not passenger_id:
-        logger.error("Hotel booking attempted without passenger ID")
-        raise ValueError("No passenger ID provided. Authorization required.")
+        raise ValueError("❌ Passenger ID required for booking.")
     
-    if not hotel_id:
-        logger.error("Hotel booking attempted without hotel ID")
-        raise ValueError("Hotel ID is required.")
+    result = booking_sim.book_hotel(hotel_id, passenger_id, checkin, checkout)
     
-    # In production: verify availability, process payment, create reservation
-    logger.info(f"Hotel {hotel_id} booked for passenger {passenger_id}")
-    return f"Hotel {hotel_id} successfully booked for passenger {passenger_id}."
+    if result['success']:
+        return result['message']
+    else:
+        raise ValueError(result.get('error', 'Booking failed'))
