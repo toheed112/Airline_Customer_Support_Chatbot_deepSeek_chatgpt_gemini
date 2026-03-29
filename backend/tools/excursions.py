@@ -1,82 +1,80 @@
-# backend/tools/excursions.py - Excursion tools with SQLite
-import sqlite3
-import logging
-from pathlib import Path
-from dotenv import load_dotenv
+# ========================================
+# backend/tools/excursions.py - Updated for JSON
+# ========================================
 
-load_dotenv()
+from typing import List, Dict, Any
+import logging
+from backend.tools.booking_simulator import booking_sim
 
 logger = logging.getLogger(__name__)
 
-# Use absolute path
-DB_PATH = Path(__file__).parent.parent.parent / "data" / "travel2.sqlite"
 
-
-def search_excursions(location, limit=20):
-    """
-    Search excursions and tours in a location.
-    
-    Args:
-        location: City or location name
-        limit: Maximum number of results
-    
-    Returns:
-        List of excursion dictionaries or error message
-    """
+def search_excursions(location: str, limit=20) -> List[Dict[str, Any]] | str:
+    """Search excursions (simulated)."""
     try:
-        conn = sqlite3.connect(str(DB_PATH))
-        cursor = conn.cursor()
+        from backend.tools.location_parser import LocationParser
+        parser = LocationParser()
         
-        query = "SELECT * FROM excursions WHERE 1=1"
-        params = []
+        iata = parser.resolve_iata(location)
+        if not iata:
+            return f"❌ Unknown location: '{location}'."
         
-        if location:
-            query += " AND location LIKE ?"
-            params.append(f"%{location}%")
+        location_info = parser.get_location_info(iata)
+        city = location_info['city'] if location_info else location
         
-        query += " LIMIT ?"
-        params.append(limit)
+        # Mock excursion data
+        mock_excursions = [
+            {
+                'id': 1,
+                'name': f'{city} Old Town Walking Tour',
+                'location': iata,
+                'city': city,
+                'description': 'Explore historic landmarks and hidden gems',
+                'duration_hours': 3.0,
+                'price': 45.0,
+                'max_participants': 15,
+                'available_slots': 10
+            },
+            {
+                'id': 2,
+                'name': f'{city} Food & Culture Experience',
+                'location': iata,
+                'city': city,
+                'description': 'Taste local cuisine and learn about traditions',
+                'duration_hours': 4.0,
+                'price': 85.0,
+                'max_participants': 20,
+                'available_slots': 15
+            },
+            {
+                'id': 3,
+                'name': f'{city} Night Lights Tour',
+                'location': iata,
+                'city': city,
+                'description': 'Evening tour of illuminated attractions',
+                'duration_hours': 2.5,
+                'price': 55.0,
+                'max_participants': 30,
+                'available_slots': 25
+            }
+        ]
         
-        cursor.execute(query, params)
-        rows = cursor.fetchall()
-        columns = [col[0] for col in cursor.description]
-        results = [dict(zip(columns, row)) for row in rows]
-        conn.close()
+        logger.info(f"Found {len(mock_excursions)} excursions in {city}")
+        return mock_excursions[:limit]
         
-        if not results:
-            logger.info(f"No excursions found in: {location}")
-            return f"No excursions available in {location}. Try a different location."
-        
-        logger.info(f"Found {len(results)} excursions in {location}")
-        return results
-        
-    except sqlite3.Error as e:
-        logger.error(f"Database error in search_excursions: {e}")
-        return f"Database error: {str(e)}"
     except Exception as e:
-        logger.error(f"Error in search_excursions: {e}")
-        return f"Error searching excursions: {str(e)}"
+        logger.error(f"Error searching excursions: {e}")
+        return f"Error: {str(e)}"
 
 
-def book_excursion(excursion_id, passenger_id):
-    """
-    Book an excursion for a passenger.
-    
-    Args:
-        excursion_id: Excursion ID to book
-        passenger_id: Passenger ID for authorization
-    
-    Returns:
-        Success message or raises ValueError
-    """
+def book_excursion(excursion_id: int, passenger_id: str, date=None, num_participants=1) -> str:
+    """Book an excursion using booking simulator."""
     if not passenger_id:
-        logger.error("Excursion booking attempted without passenger ID")
-        raise ValueError("No passenger ID provided. Authorization required.")
+        raise ValueError("❌ Passenger ID required for booking.")
     
-    if not excursion_id:
-        logger.error("Excursion booking attempted without excursion ID")
-        raise ValueError("Excursion ID is required.")
+    result = booking_sim.book_excursion(excursion_id, passenger_id, date, num_participants)
     
-    # In production: check availability, process payment, create booking
-    logger.info(f"Excursion {excursion_id} booked for passenger {passenger_id}")
-    return f"Excursion {excursion_id} successfully booked for passenger {passenger_id}."
+    if result['success']:
+        return result['message']
+    else:
+        raise ValueError(result.get('error', 'Booking failed'))
