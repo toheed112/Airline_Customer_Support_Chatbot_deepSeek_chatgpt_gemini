@@ -1,83 +1,77 @@
-# backend/tools/car_rentals.py - Car rental tools with SQLite
-import sqlite3
-import logging
-from pathlib import Path
-from dotenv import load_dotenv
+# ========================================
+# backend/tools/car_rentals.py - Updated for JSON
+# ========================================
 
-load_dotenv()
+from typing import List, Dict, Any
+import logging
+from backend.tools.booking_simulator import booking_sim
 
 logger = logging.getLogger(__name__)
 
-# Use absolute path
-DB_PATH = Path(__file__).parent.parent.parent / "data" / "travel2.sqlite"
 
-
-def search_cars(location, dates=None, limit=20):
-    """
-    Search available rental cars.
-    
-    Args:
-        location: City or location name
-        dates: Rental dates (optional, for future enhancement)
-        limit: Maximum number of results
-    
-    Returns:
-        List of car dictionaries or error message
-    """
+def search_cars(location: str, dates=None, limit=20) -> List[Dict[str, Any]] | str:
+    """Search rental cars (simulated)."""
     try:
-        conn = sqlite3.connect(str(DB_PATH))
-        cursor = conn.cursor()
+        from backend.tools.location_parser import LocationParser
+        parser = LocationParser()
         
-        query = "SELECT * FROM cars WHERE 1=1"
-        params = []
+        iata = parser.resolve_iata(location)
+        if not iata:
+            return f"❌ Unknown location: '{location}'."
         
-        if location:
-            query += " AND location LIKE ?"
-            params.append(f"%{location}%")
+        location_info = parser.get_location_info(iata)
+        city = location_info['city'] if location_info else location
         
-        query += " LIMIT ?"
-        params.append(limit)
+        # Mock car data
+        mock_cars = [
+            {
+                'id': 1,
+                'model': 'VW Golf',
+                'category': 'Economy',
+                'location': iata,
+                'city': city,
+                'price_per_day': 45.0,
+                'available': 5,
+                'features': ['Manual', 'AC', '4 seats']
+            },
+            {
+                'id': 2,
+                'model': 'BMW 3 Series',
+                'category': 'Luxury',
+                'location': iata,
+                'city': city,
+                'price_per_day': 120.0,
+                'available': 2,
+                'features': ['Automatic', 'AC', 'GPS', '5 seats']
+            },
+            {
+                'id': 3,
+                'model': 'Tesla Model 3',
+                'category': 'Premium Electric',
+                'location': iata,
+                'city': city,
+                'price_per_day': 150.0,
+                'available': 3,
+                'features': ['Electric', 'Automatic', 'GPS', '5 seats']
+            }
+        ]
         
-        cursor.execute(query, params)
-        rows = cursor.fetchall()
-        columns = [col[0] for col in cursor.description]
-        results = [dict(zip(columns, row)) for row in rows]
-        conn.close()
+        logger.info(f"Found {len(mock_cars)} cars in {city}")
+        return mock_cars[:limit]
         
-        if not results:
-            logger.info(f"No cars found in: {location}")
-            return f"No rental cars available in {location}. Try a different location."
-        
-        logger.info(f"Found {len(results)} cars in {location}")
-        return results
-        
-    except sqlite3.Error as e:
-        logger.error(f"Database error in search_cars: {e}")
-        return f"Database error: {str(e)}"
     except Exception as e:
-        logger.error(f"Error in search_cars: {e}")
-        return f"Error searching cars: {str(e)}"
+        logger.error(f"Error searching cars: {e}")
+        return f"Error: {str(e)}"
 
 
-def book_car(car_id, passenger_id):
-    """
-    Book a rental car for a passenger.
-    
-    Args:
-        car_id: Car ID to book
-        passenger_id: Passenger ID for authorization
-    
-    Returns:
-        Success message or raises ValueError
-    """
+def book_car(car_id: int, passenger_id: str, pickup_date=None, dropoff_date=None) -> str:
+    """Book a car using booking simulator."""
     if not passenger_id:
-        logger.error("Car booking attempted without passenger ID")
-        raise ValueError("No passenger ID provided. Authorization required.")
+        raise ValueError("❌ Passenger ID required for booking.")
     
-    if not car_id:
-        logger.error("Car booking attempted without car ID")
-        raise ValueError("Car ID is required.")
+    result = booking_sim.book_car(car_id, passenger_id, pickup_date, dropoff_date)
     
-    # In production: check availability, process payment, create reservation
-    logger.info(f"Car {car_id} booked for passenger {passenger_id}")
-    return f"Car {car_id} successfully booked for passenger {passenger_id}."
+    if result['success']:
+        return result['message']
+    else:
+        raise ValueError(result.get('error', 'Booking failed'))
