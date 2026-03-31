@@ -1,24 +1,49 @@
-# Core LLM runtimes
-ollama>=0.1.0
-openai>=1.10.0
-google-generativeai>=0.4.1
+# Swiss Airlines Chatbot - Updated Dependencies (JSON System)
+# Install: pip install -r requirements.txt
+# Python 3.10+ required
 
-# LangChain stack (optional - for future LangGraph integration)
-langchain>=0.1.0
-langgraph>=0.0.20
-langchain-openai>=0.0.5
-langchain-community>=0.0.20
+# ==================== CORE LLM & AI ====================
+ollama>=0.1.7
+openai>=1.12.0
+google-generativeai>=0.3.2
 
-# Tools & retrieval
-tavily-python>=0.3.0
-numpy>=1.24.0
+# ==================== VECTOR STORE & EMBEDDINGS ====================
 faiss-cpu>=1.7.4
+numpy>=1.24.0,<2.0.0
+
+# ==================== WEB SEARCH (Optional) ====================
+tavily-python>=0.3.0
+
+# ==================== HTTP & NETWORKING ====================
 requests>=2.31.0
 
-# App / UI / environment
-streamlit>=1.29.0
+# ==================== WEB FRAMEWORK ====================
+streamlit>=1.31.0
+
+# ==================== CONFIGURATION ====================
 python-dotenv>=1.0.0
 
-# Development tools
-pytest>=7.4.0
-black>=23.0.0
+# ==================== DATE/TIME ====================
+pytz>=2024.1
+
+# ==================== TYPING (for older Python versions) ====================
+typing-extensions>=4.5.0
+
+# ==================== NOTES ====================
+# No SQLite3 - using built-in Python sqlite3 module
+# No pandas - not needed for JSON system
+# JSON handling uses built-in json module
+
+# MINIMUM INSTALLATION:
+# pip install ollama openai streamlit python-dotenv requests numpy faiss-cpu typing-extensions
+
+# OPTIONAL:
+# pip install tavily-python google-generativeai
+
+# GPU ACCELERATION (replace faiss-cpu):
+# pip install faiss-gpu
+
+# PLATFORM NOTES:
+# - Windows: May need Visual C++ Build Tools for faiss-cpu
+# - Mac M1/M2/M3: Use arch -arm64 pip install
+# - Linux: Works out of the box
