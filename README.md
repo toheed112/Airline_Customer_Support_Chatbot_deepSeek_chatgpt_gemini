@@ -1,5 +1,5 @@
 # ✈️ Swiss Airlines AI Assistant
-### ET AI Hackathon 2026 — Problem Statement 2: Agentic AI for Autonomous Enterprise Workflows
+### Problem Statement 2: Agentic AI for Autonomous Enterprise Workflows
 **Team:** mohdtoheed786k | **Solo Submission**
 
 ---
